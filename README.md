@@ -1,78 +1,65 @@
-# Sample microservices implementing order fulfillment
+# Flowing Retail
 
-This sample application shows how to implement
+This sample application demonstrates a simple order fulfillment system, decomposed into multiple independent components (that is to say: _microservices_).
 
-* a simple order fulfillment system
+The repository contains code for multiple implementation alternatives to allow a broad audience to understand the code and to compare alternatives. The [table below](#alternatives) lists these alternatives.
 
-in the context of
+The example respects learnings from **Domain Driven Design (DDD)**, Event Driven Architecture (EDA) and **Microservices (µS)** and is designed to give you hands-on access to these topics.
 
-* Domain Driven Design (DDD)
-* Event Driven Architecture (EDA)
-* Microservices (µS)
+**Note:** The code was written in order to be explained. Hence, I favored simplified code or copy & paste over production-ready code with generic solutions. **Don't consider the coding style best practice! It is purpose-written to be easily explainable code**.
 
-with the concrete technologies/frameworks:
+Flowing retail simulates a very easy order fulfillment system:
 
-* Java
-* Spring Boot
-* Spring Cloud Streams
-* Camunda
-* Kafka
+![Events and Commands](docs/workflow-in-service.png)
 
-# Links
+<a name = "alternatives"></a>
 
-* Introduction blog post by Bernd Rücker: https://blog.bernd-ruecker.com/flowing-retail-demonstrating-aspects-of-microservices-events-and-their-flow-with-concrete-source-7f3abdd40e53
+## Architecture and implementation alternatives
 
-# Overview and architecture
+The most fundamental choice is to select the **communication mechanism**:
 
-Flowing retail simulates a very easy order fulfillment system. The business logic is separated into the following microservices:
+* **[Apache Kafka](kafka/)** as event bus (could be easily changed to messaging, e.g. RabbitMQ): [](docs/architecture.png)
+* **[REST](rest/)** communication between Services.
+  * This example also shows how to do **stateful resilience patterns** like **stateful retries** leveraging a workflow engine.
+* **[Zeebe](zeebe/)** broker doing work distribution.
 
-![Microservices](docs/services.png)
+After the communication mechanism, the next choice is the **workflow engine**:
 
-* The core domains communicate via messages with each other.
-* Messages might contain *events* or *commands*.
+* **Camunda BPM 7**
+* **Zeebe** (if you are interested why Zeebe is listed in the communication mechanism as well as workflow engine please look into the [Zeebe example readme](zeebe/))
+* **Zeebe hosted on Camunda Cloud**
 
-Note that every component does its own parts of the overall order fulfillment capability. As an example this is illustrated using BPMN and showing the Order and Payment Service with their processes:
+and the **programming language**:
 
-![Events and Commands](docs/bpmn.png)
+* **Java**
+* **Go**
+* **JavaScript / TypeScript**
+
+## Storyline
+
+Flowing retail simulates a very easy order fulfillment system. The business logic is separated into the services shown above (shown as a [context map](https://www.infoq.com/articles/ddd-contextmapping)).
+
+### Long running services and orchestration
+
+Some services are **long running** in nature - for example: the payment service asks customers to update expired credit cards. A workflow engine is used to persist and control these long running interactions.
+
+### Workflows live within service boundaries
+
+Note that the state machine (_or workflow engine in this case_) is a library used **within** one service. If different services need a workflow engine they can  run whatever engine they want. This way it is an autonomous team decision if they want to use a framework, and which one:
+
+![Events and Commands](docs/workflow-in-service.png)
+
+### Resilience patterns for synchronous communication
+
+You also have to deal with basic communication problems, the specifics of which depend on the means of communication (for example: _asynchronous messaging_ vs. _blocking synchronous REST calls_). You might use stateful retries for this.
+
+![V1](docs/resilience-patterns/v1.png)
+
+### See [REST example](rest/).
 
 
-# Run the application
+## Links and background reading
 
-* Download or clone the source code
-* Run a full maven build
-
-```
-mvn install
-```
-
-* Install and start Kafka on the standard port
-* Create topic *"flowing-retail"* (TODO: Auto Creation by Spring)
-
-```
-kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic flowing-retail
-```
-
-* You can check & query all topics by: 
-
-```
-kafka-topics.sh --list --zookeeper localhost:2181
-```
-
-* Start the different microservices components by Spring Boot one by one
-    
-```
-mvn -f checkout exec:java
-...
-```
-
-You can also import the projects into your favorite IDE and start the following class yourself:
-
-```
-checkout/io.flowing.retail.java.CheckoutApplication
-...
-```
-
-* Now you can place an order via [http://localhost:8090](http://localhost:8090)
-* You can inspect the order VPMN via [http://localhost:8091](http://localhost:8091)
-* You can inspect all events going on via [http://localhost:8095](http://localhost:8095)
-
+* Introduction blog post: https://blog.bernd-ruecker.com/flowing-retail-demonstrating-aspects-of-microservices-events-and-their-flow-with-concrete-source-7f3abdd40e53
+* InfoQ-Writeup "Events, Flows and Long-Running Services: A Modern Approach to Workflow Automation": https://www.infoq.com/articles/events-workflow-automation
+* InfoWorld article "3 common pitfalls of microservices integration—and how to avoid them": https://www.infoworld.com/article/3254777/application-development/3-common-pitfalls-of-microservices-integrationand-how-to-avoid-them.html
